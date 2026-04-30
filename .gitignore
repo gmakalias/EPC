@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+dist/
+.npm/
+
+# Prisma & Database
+.env
+*.db
+*.db-journal
+
+# Build outputs
+build/
+*.exe
+*.dll
+
+# IDE & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temp files for Word Docs (important since you have docs/)
+~$*.docx

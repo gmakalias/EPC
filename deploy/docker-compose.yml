@@ -1,0 +1,182 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: epc-postgres
+    environment:
+      POSTGRES_DB: epc_dev
+      POSTGRES_USER: epc_user
+      POSTGRES_PASSWORD: epc_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    networks:
+      - epc-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U epc_user -d epc_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: epc-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - epc-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Elasticsearch for search and audit logs
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: epc-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - epc-network
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: epc-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: epc_user
+      RABBITMQ_DEFAULT_PASS: epc_password
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - epc-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Backend API (Node.js/NestJS)
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: epc-api
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://epc_user:epc_password@postgres:5432/epc_dev
+      REDIS_URL: redis://redis:6379
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      RABBITMQ_URL: amqp://epc_user:epc_password@rabbitmq:5672
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - epc-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    command: npm run start:dev
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: epc-frontend
+    environment:
+      VITE_API_URL: http://localhost:3000/api/v1
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - epc-network
+    depends_on:
+      - api
+    command: npm run dev -- --host
+
+  # Adminer for database management
+  adminer:
+    image: adminer:latest
+    container_name: epc-adminer
+    ports:
+      - "8080:8080"
+    networks:
+      - epc-network
+    depends_on:
+      - postgres
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: epc-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - epc-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: epc-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - epc-network
+    depends_on:
+      - prometheus
+
+networks:
+  epc-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  elasticsearch_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
