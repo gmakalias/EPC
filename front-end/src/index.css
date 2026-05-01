@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Colors from your prototype */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --accent-primary: #2563eb;
+  --text-main: #1e293b;
+  --border-primary: #e2e8f0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg-secondary);
+  color: var(--text-main);
+}
+
+/* Custom Component Classes from Prototype */
+@layer components {
+  .app-header {
+    @apply h-16 bg-white border-b border-gray-200 flex items-center justify-between px-10 sticky top-0 z-50;
+  }
+  .sidebar {
+    @apply w-64 bg-white border-r border-gray-200 h-screen sticky top-0 overflow-y-auto;
+  }
+  .data-table {
+    @apply w-full text-left border-collapse;
+  }
+  .data-table th {
+    @apply p-4 bg-gray-50 border-b border-gray-200 font-semibold text-sm text-gray-600;
+  }
+  .data-table td {
+    @apply p-4 border-b border-gray-100 text-sm;
+  }
+}
