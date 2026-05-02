@@ -10,11 +10,15 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    // Port 5173 is the Vite default, matching your docker-compose ports
+    port: 5173,
+    host: true, // Necessary for Docker to expose the port
     proxy: {
       '/api': {
-        target: 'http://localhost:3001', // Your NestJS Backend[cite: 1]
+        // Use the Docker service name 'api' instead of localhost
+        target: 'http://api:3000', 
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
       },
     },
   },

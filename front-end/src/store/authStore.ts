@@ -16,7 +16,8 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  // FIX: Change void to boolean so Login.tsx can check if (success)
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   refreshAuth: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
@@ -42,10 +43,11 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
           });
 
-          // Set auth header for future requests
           api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          return true; // Return true on success
         } catch (error) {
-          throw error;
+          console.error('Login error:', error);
+          return false; // Return false on failure
         }
       },
 
@@ -78,16 +80,14 @@ export const useAuthStore = create<AuthState>()(
           api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         } catch (error) {
           get().logout();
+          throw error; // Throw so the interceptor knows the refresh failed
         }
       },
 
       hasPermission: (permission: string) => {
         const { user } = get();
         if (!user) return false;
-        
-        // Admin has all permissions
         if (user.roles.includes('admin')) return true;
-        
         return user.permissions.includes(permission);
       },
     }),
@@ -103,21 +103,28 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// Setup axios interceptor for token refresh
+// Setup axios interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Prevent infinite loops if /refresh itself returns 401
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/refresh')) {
       originalRequest._retry = true;
 
       try {
         await useAuthStore.getState().refreshAuth();
+        
+        // Update the header for the retried request
+        const newToken = useAuthStore.getState().accessToken;
+        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+        
         return api(originalRequest);
       } catch (refreshError) {
         useAuthStore.getState().logout();
-        window.location.href = '/login';
+        // Only redirect if we are in a browser environment
+        if (typeof window !== 'undefined') window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }

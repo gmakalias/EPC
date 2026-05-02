@@ -1,6 +1,8 @@
 import React from 'react';
 import Card from '../components/Card';
 import Badge from '../components/Badge';
+import Button from '../components/Form/Button';
+
 
 const LifecycleDashboard: React.FC = () => {
   const workflowSteps = ['Concept', 'Design', 'Validation', 'Launch', 'Retired'];

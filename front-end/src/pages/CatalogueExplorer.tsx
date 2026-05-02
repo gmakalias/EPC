@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../components/Card';
 import Badge from '../components/Badge';
-import Button from '../components/Button';
+import Button from '../components/Form/Button';
 
 const CatalogueExplorer: React.FC = () => {
   const [products, setProducts] = useState([]);

@@ -1,4 +1,3 @@
-// backend/src/auth/strategies/jwt.strategy.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
@@ -27,15 +26,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    // Verify user still exists and is active
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       include: {
-        userRoles: {
+        userRoles: { // FIX: Use 'userRoles' from schema
           include: {
             role: {
               include: {
-                rolePermissions: {
+                permissions: { 
                   include: {
                     permission: true,
                   },
@@ -55,19 +53,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User account is disabled');
     }
 
-    // Extract roles and permissions
+    // FIX: Mapping from 'userRoles'
     const roles = user.userRoles.map((ur) => ur.role.name);
     const permissions = user.userRoles.flatMap((ur) =>
-      ur.role.rolePermissions.map((rp) => rp.permission.name),
+      ur.role.permissions.map((rp) => rp.permission.name),
     );
 
-    // Return user info that will be attached to request.user
     return {
       sub: user.id,
       email: user.email,
       fullName: user.fullName,
       roles,
-      permissions: [...new Set(permissions)], // Remove duplicates
+      permissions: [...new Set(permissions)],
     };
   }
 }

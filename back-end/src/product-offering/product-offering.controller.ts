@@ -64,8 +64,10 @@ export class ProductOfferingController {
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateProductOfferingDto,
+    @CurrentUser() user: any, // FIX: Added CurrentUser
   ) {
-    return this.productOfferingService.update(id, updateDto);
+    // FIX: Passing user.id as the 3rd argument
+    return this.productOfferingService.update(id, updateDto, user.id);
   }
 
   @Delete(':id')
@@ -74,14 +76,19 @@ export class ProductOfferingController {
   @ApiOperation({ summary: 'Delete product offering (TMF620)' })
   @ApiResponse({ status: 204, description: 'Product offering deleted successfully' })
   @ApiResponse({ status: 404, description: 'Product offering not found' })
-  async remove(@Param('id') id: string) {
-    await this.productOfferingService.remove(id);
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: any, // FIX: Added CurrentUser
+  ) {
+    // FIX: Passing user.id as the 2nd argument
+    await this.productOfferingService.remove(id, user.id);
   }
 
   @Get(':id/pricing')
   @RequirePermissions('offering.read', 'pricing.read')
   @ApiOperation({ summary: 'Get pricing plans for offering' })
   async getPricing(@Param('id') id: string) {
+    // FIX: Method name match (service implementation)
     return this.productOfferingService.getPricingPlans(id);
   }
 

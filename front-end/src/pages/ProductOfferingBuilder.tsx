@@ -1,7 +1,7 @@
 import React from 'react';
 import Card from '../components/Card';
 import { FormInput } from '../components/Form/FormInput';
-import Button from '../components/Button';
+import Button from '../components/Form/Button';
 
 const ProductOfferingBuilder: React.FC = () => {
   return (

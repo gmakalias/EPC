@@ -5,7 +5,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 
 COPY package*.json ./
-COPY prisma ./prisma/
+COPY src/prisma ./prisma/
 
 RUN npm ci --only=production && \
     npm cache clean --force
@@ -15,11 +15,12 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-COPY tsconfig*.json ./
-COPY prisma ./prisma/
-COPY src ./src/
+COPY src/prisma ./prisma/
 
-RUN npm ci && \
+# This command ensures tsconfig, nest-cli, and all src files are copied
+COPY . . 
+
+RUN npm install && \
     npx prisma generate && \
     npm run build
 
@@ -56,3 +57,26 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
 ENTRYPOINT ["dumb-init", "--"]
 
 CMD ["node", "dist/main.js"]
+
+# Use a specific node version
+FROM node:20-slim AS builder
+
+# Install OpenSSL and other required build tools
+RUN apt-get update && apt-get install -y \
+    openssl \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package*.json ./
+COPY src/prisma ./prisma/
+
+# Install dependencies
+RUN npm install --legacy-peer-deps
+
+# Copy rest of the code
+COPY . .
+
+# Generate Prisma Client and build
+RUN npx prisma generate && npm run build

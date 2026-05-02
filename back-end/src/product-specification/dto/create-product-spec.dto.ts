@@ -108,11 +108,14 @@ export class CharacteristicDto {
   maxValue?: number;
 
   @ApiPropertyOptional({
-    description: 'Allowed values (for enum types)',
-    example: ['Fiber', 'DSL', 'Cable'],
-    type: 'object',
+  description: 'Allowed values (for enum types)',
+  type: 'object',
+  additionalProperties: true, // This fixes the TS2345 error
   })
-  @IsOptional()
+  
+  @ApiPropertyOptional({ 
+  description: 'Allowed values (for enum types)' 
+  })
   allowedValues?: any;
 
   @ApiPropertyOptional({

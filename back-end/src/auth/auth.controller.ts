@@ -141,11 +141,15 @@ export class AuthController {
   @ApiOperation({ summary: 'Change user password' })
   @ApiResponse({ status: 204, description: 'Password changed successfully' })
   @ApiResponse({ status: 401, description: 'Current password is incorrect' })
-  async changePassword(
+
+async changePassword(
     @Req() req: Request,
+    // Note: It's better to use a DTO here, but matching your inline body type:
     @Body() body: { currentPassword: string; newPassword: string },
   ) {
     const userId = req.user['sub'];
+    
+    // This call sends 3 arguments. We must ensure AuthService accepts them.
     await this.authService.changePassword(
       userId,
       body.currentPassword,

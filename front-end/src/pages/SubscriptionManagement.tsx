@@ -2,6 +2,7 @@ import React from 'react';
 import Card from '../components/Card';
 import Badge from '../components/Badge';
 import { FormInput } from '../components/Form/FormInput';
+import Button from '../components/Form/Button';
 
 const SubscriptionManagement: React.FC = () => {
   return (

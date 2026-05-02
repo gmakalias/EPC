@@ -2,6 +2,7 @@ import React from 'react';
 import Card from '../components/Card';
 import { FormInput } from '../components/Form/FormInput';
 import Badge from '../components/Badge';
+import Button from '../components/Form/Button';
 
 const PricingConfigurator: React.FC = () => {
   return (

@@ -1,0 +1,410 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================
+// 1. IDENTITY & ACCESS MANAGEMENT (RBAC)
+// =============================================
+
+model Subscription {
+  id                 String          @id @default(uuid())
+  subscriptionNumber String          @unique
+  customerId         String
+  status             String          @default("Active")
+  networkProfile     String?
+  operator           String?
+  tmCode             String?
+  activationDate     DateTime?
+  terminationDate    DateTime?
+  metadata           Json?
+  
+  offeringId         String
+  offering           ProductOffering @relation(fields: [offeringId], references: [id])
+  subscriptionCharacteristics SubscriptionCharacteristic[]
+  subscriptionServices        SubscriptionService[]
+  
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  services         ServiceInventory[]
+  
+  @@index([customerId])
+  @@index([status])
+}
+
+model SubscriptionCharacteristic {
+  id                  String       @id @default(uuid())
+  subscriptionId      String
+  subscription        Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  characteristicName  String
+  characteristicValue String
+
+  @@index([subscriptionId])
+}
+
+// This model handles the CFS/RFS/Resource mapping from your provisionServices logic
+model SubscriptionService {
+  id             String       @id @default(uuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  cfsServiceId   String?
+  rfsServiceId   String?
+  resourceId     String?
+  status         String       @default("active")
+
+  // Note: You would add relations to CfsService, RfsService, and Resource here
+  // based on those models existing in your schema.
+}
+
+model User {
+  id            String     @id @default(uuid())
+  username      String     @unique // Error TS2322 said this was missing!
+  email         String     @unique
+  passwordHash  String
+  fullName      String
+  isActive      Boolean    @default(true)
+  isVerified    Boolean    @default(false)
+  lastLogin     DateTime?  // Error TS2353 said this was missing!
+  userRoles     UserRole[] // Error TS2339 said this was missing!
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  createdSpecs  ProductSpecification[]
+  createdOffers ProductOffering[]
+  auditLogs 	AuditLog[]
+}
+
+model Role {
+  id           String           @id @default(uuid())
+  name         String           @unique
+  description  String?
+  isSystemRole Boolean          @default(false)
+  permissions  RolePermission[]
+  userRoles    UserRole[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  name        String           @unique // e.g., 'product.create'
+  resource    String           // e.g., 'product'
+  action      String           // e.g., 'create'
+  description String?
+  roles       RolePermission[]
+}
+
+model UserRole {
+  userId  String
+  roleId  String
+  user    User   @relation(fields: [userId], references: [id])
+  role    Role   @relation(fields: [roleId], references: [id])
+
+  // This line fixes the "userId_roleId does not exist" error
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+// =============================================
+// 2. PRODUCT CATALOGUE (TMF620)
+// =============================================
+
+model Category {
+  id           String                 @id
+  name         String
+  description  String?
+  isRoot       Boolean                @default(false)
+  parentId     String?
+  parent       Category?              @relation("SubCategories", fields: [parentId], references: [id])
+  children     Category[]             @relation("SubCategories")
+  displayOrder Int                    @default(0)
+  path         String
+  level        Int
+  icon         String?
+  specs        ProductSpecification[]
+  // Relationship to offerings
+  offerings       ProductOffering[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  lifecycleStatus String   @default("Active")
+}
+
+model ProductSpecification {
+  id              String           @id @default(uuid())
+  name            String
+  description     String?
+  productNumber   String?          @unique
+  version         String           @default("1.0")
+  status          String           @default("active")
+  categoryId      String
+  category        Category         @relation(fields: [categoryId], references: [id])
+  createdById     String
+  createdBy       User             @relation(fields: [createdById], references: [id])
+  characteristics Characteristic[]
+  offerings       ProductOffering[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lifecycleStatus String   @default("DRAFT") // Added this
+  validForStart DateTime @default(now())
+}
+
+model Characteristic {
+  id            String               @id @default(uuid())
+  name          String
+  description   String?
+  valueType     String               // number, string, enum, etc.
+  unitOfMeasure String?
+  isRequired    Boolean              @default(false)
+  defaultValue  String?
+  allowedValues String[]             // Array for enum types
+  specId        String
+  spec          ProductSpecification @relation(fields: [specId], references: [id])
+}
+
+model ProductOffering {
+  id             String         @id @default(uuid())
+  name           String
+  description     String?
+  version         String                @default("1.0")
+  status          String                @default("active")
+  isSellable      Boolean               @default(true)
+  sellingMode     String                @default("online")
+  validForStart   DateTime?
+  validForEnd     DateTime?
+  specificationId String
+  specification   ProductSpecification  @relation(fields: [specificationId], references: [id])
+  createdById     String
+  createdBy       User                  @relation(fields: [createdById], references: [id])
+  metadata        Json?                 // For operator-specific codes
+  channelMappings OfferingChannel[]
+  pricingPlans   PricingPlan[]
+  subscriptions  Subscription[] // <--- This now points to a valid model
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  lifecycleStatus String   @default("DRAFT") // Added this
+  businessRules BusinessRule[]
+}
+
+// =============================================
+// 3. CHANNELS & PRICING
+// =============================================
+
+model DistributionChannel {
+  id          String            @id @default(uuid())
+  name        String            @unique
+  channelType String            // online, retail, partner
+  description String?
+  isActive    Boolean           @default(true)
+  offerings   OfferingChannel[]
+}
+
+model OfferingChannel {
+  offeringId String
+  channelId  String
+  isEnabled  Boolean             @default(true)
+  displayOrder Int               @default(0)
+  offering   ProductOffering     @relation(fields: [offeringId], references: [id])
+  channel    DistributionChannel @relation(fields: [channelId], references: [id])
+
+  @@id([offeringId, channelId])
+}
+
+model PricingPlan {
+  id              String           @id @default(uuid())
+  offeringId      String
+  offering        ProductOffering  @relation(fields: [offeringId], references: [id])
+  name            String
+  description     String?
+  pricingType     String           // recurring, one-time, tiered, usage, volume
+  currency        String           @default("EUR")
+  validForStart   DateTime?
+  validForEnd     DateTime?
+  isActive        Boolean          @default(true)
+  metadata        Json?
+  priceComponents PriceComponent[]
+  pricingTiers    PricingTier[]
+  type			  String
+  period		  String
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([offeringId])
+}
+
+model PriceComponent {
+  id               String      @id @default(uuid())
+  planId           String      // <--- THIS WAS LIKELY MISSING
+  pricingPlan      PricingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  name             String
+  componentType    String      // recurring, setup, etc.
+  amount           Float
+  currency         String      @default("EUR")
+  recurrencePeriod String?     // monthly, yearly
+  unitOfMeasure    String?     // GB, minutes, etc.
+  
+  @@index([planId])
+}
+
+// =============================================
+// 4. SERVICE & RESOURCE INVENTORY (TMF638)
+// =============================================
+
+model CfsService {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  serviceType String
+  parameters  Json?        // e.g., { "codec": "AMR-WB" }
+  rfsServices RfsService[]
+}
+
+model RfsService {
+  id           String               @id @default(uuid())
+  name         String
+  description  String?
+  serviceType  String
+  cfsServiceId String
+  cfsService   CfsService           @relation(fields: [cfsServiceId], references: [id])
+  parameters   Json?
+  resources    RfsResourceMapping[]
+}
+
+model Resource {
+  id           String               @id @default(uuid())
+  name         String
+  resourceType String               // msisdn, sim, ip
+  status       String               @default("available")
+  parameters   Json?
+  rfsMappings  RfsResourceMapping[]
+}
+
+model RfsResourceMapping {
+  rfsServiceId String
+  resourceId   String
+  rfsService   RfsService @relation(fields: [rfsServiceId], references: [id])
+  resource     Resource   @relation(fields: [resourceId], references: [id])
+
+  @@id([rfsServiceId, resourceId])
+}
+
+model PricingTier {
+  id            String      @id @default(uuid())
+  planId        String
+  plan          PricingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  tierLevel     Int         @default(1)
+  fromQuantity  Decimal     @db.Decimal(10, 2)
+  toQuantity    Decimal?    @db.Decimal(10, 2)
+  pricePerUnit  Decimal     @db.Decimal(10, 2)
+
+  @@index([planId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  userId      String
+  userEmail   String?
+  action      String   // CREATE, UPDATE, DELETE
+  entity      String   // Table Name
+  entityType  String
+  entityId    String
+  entityName  String?
+  changes     String?  @db.Text
+  ipAddress   String?
+  userAgent   String?
+  sessionId   String?
+  details   Json
+  timestamp DateTime @default(now())
+  // Relation to User (Optional but recommended)
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  @@index([entityId, entityType])
+  @@index([createdAt])
+}
+
+model BusinessRule {
+  id          String           @id @default(uuid())
+  name        String
+  description String?
+  ruleType    String           // COMPATIBILITY, VALIDATION, PRICING
+  condition   Json             // e.g., { "type": "REQUIRES", "targetId": "uuid" }
+  isActive    Boolean          @default(true)
+  
+  // Relation to Product Offering
+  offeringId  String
+  offering    ProductOffering  @relation(fields: [offeringId], references: [id])
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([offeringId])
+}
+
+model ServiceInventory {
+  id              String                @id @default(uuid())
+  name            String
+  serviceType     String                // CFS (Customer Facing), RFS (Resource Facing)
+  serviceState    String                @default("active")
+  
+  // Link to the subscription that owns this service
+  subscriptionId  String?
+  subscription    Subscription?         @relation(fields: [subscriptionId], references: [id])
+  characteristics ServiceCharacteristic[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  resources ResourceInventory[] // Link to the technical resources
+  
+  @@index([subscriptionId])
+  @@index([serviceState])
+}
+
+model ServiceCharacteristic {
+  id        String           @id @default(uuid())
+  name      String
+  value     String
+  serviceId String
+  service   ServiceInventory @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId])
+}
+
+model ResourceInventory {
+  id              String                  @id @default(uuid())
+  name            String
+  resourceType    String                  // e.g., 'Physical', 'Virtual', 'Logical'
+  resourceStatus  String                  @default("available") // available, reserved, allocated, retired
+  
+  // Relation to Service
+  serviceId       String?
+  service         ServiceInventory?       @relation(fields: [serviceId], references: [id])
+  characteristics ResourceCharacteristic[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([serviceId])
+  @@index([resourceStatus])
+}
+
+model ResourceCharacteristic {
+  id         String            @id @default(uuid())
+  name       String
+  value      String
+  resourceId String
+  resource   ResourceInventory @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId])
+}

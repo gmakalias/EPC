@@ -28,10 +28,10 @@ import { HealthModule } from './health/health.module';
     }),
 
     // Rate limiting
-    ThrottlerModule.forRoot({
-      ttl: 60,
-      limit: 100,
-    }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000, 
+      limit: 10,
+    }]),
 
     // Core modules
     PrismaModule,

@@ -1,73 +1,43 @@
 // backend/src/audit/audit.service.ts
+
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-
-export interface AuditLogInput {
-  userId?: string;
-  userEmail?: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'REJECT' | 'VIEW';
-  entityType: string;
-  entityId: string;
-  entityName?: string;
-  changes?: any;
-  ipAddress?: string;
-  userAgent?: string;
-  sessionId?: string;
-}
+import { AuditLogInput, AuditFilters } from './interfaces/audit-log.interface';
 
 @Injectable()
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Log an audit event
-   */
   async log(input: AuditLogInput): Promise<void> {
     try {
       await this.prisma.auditLog.create({
         data: {
-          userId: input.userId,
+          user: { connect: { id: input.userId } },
           userEmail: input.userEmail,
           action: input.action,
+          
+          // Mapping fields to satisfy Prisma Schema requirements
+          entity: input.entityType,
           entityType: input.entityType,
           entityId: input.entityId,
           entityName: input.entityName,
-          changes: input.changes,
+          
+          // Handling JSON/String conversion for changes
+          details: input.changes ? JSON.stringify(input.changes) : "{}",
+          changes: input.changes ? JSON.stringify(input.changes) : null,
+          
           ipAddress: input.ipAddress,
           userAgent: input.userAgent,
           sessionId: input.sessionId,
         },
       });
     } catch (error) {
-      // Don't throw - audit failures shouldn't break business logic
-      console.error('Audit log error:', error);
+      console.error('Audit log failure:', error);
     }
   }
 
-  /**
-   * Get audit logs with filtering
-   */
-  async getLogs(filters: {
-    userId?: string;
-    entityType?: string;
-    entityId?: string;
-    action?: string;
-    startDate?: Date;
-    endDate?: Date;
-    page?: number;
-    limit?: number;
-  }) {
-    const {
-      userId,
-      entityType,
-      entityId,
-      action,
-      startDate,
-      endDate,
-      page = 1,
-      limit = 50,
-    } = filters;
-
+  async getLogs(filters: AuditFilters) {
+    const { userId, entityType, entityId, action, startDate, endDate, page = 1, limit = 50 } = filters;
     const where: any = {};
 
     if (userId) where.userId = userId;
@@ -76,25 +46,19 @@ export class AuditService {
     if (action) where.action = action;
 
     if (startDate || endDate) {
-      where.timestamp = {};
-      if (startDate) where.timestamp.gte = startDate;
-      if (endDate) where.timestamp.lte = endDate;
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = startDate;
+      if (endDate) where.createdAt.lte = endDate;
     }
 
     const [logs, total] = await Promise.all([
       this.prisma.auditLog.findMany({
         where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { timestamp: 'desc' },
+        skip: (page - 1) * Number(limit),
+        take: Number(limit),
+        orderBy: { createdAt: 'desc' },
         include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              fullName: true,
-            },
-          },
+          user: { select: { id: true, email: true, fullName: true } },
         },
       }),
       this.prisma.auditLog.count({ where }),
@@ -103,171 +67,44 @@ export class AuditService {
     return {
       data: logs,
       pagination: {
-        page,
-        limit,
+        page: Number(page),
+        limit: Number(limit),
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / Number(limit)),
       },
     };
   }
 
-  /**
-   * Get audit trail for a specific entity
-   */
   async getEntityHistory(entityType: string, entityId: string) {
     return this.prisma.auditLog.findMany({
-      where: {
-        entityType,
-        entityId,
-      },
-      orderBy: { timestamp: 'desc' },
+      where: { entityType, entityId },
+      orderBy: { createdAt: 'desc' },
       include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-          },
-        },
+        user: { select: { id: true, email: true, fullName: true } },
       },
     });
   }
 
-  /**
-   * Get user activity
-   */
-  async getUserActivity(userId: string, days: number = 30) {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    return this.prisma.auditLog.findMany({
-      where: {
-        userId,
-        timestamp: {
-          gte: startDate,
-        },
-      },
-      orderBy: { timestamp: 'desc' },
-      take: 100,
-    });
-  }
-
-  /**
-   * Get statistics
-   */
   async getStatistics(startDate: Date, endDate: Date) {
     const logs = await this.prisma.auditLog.findMany({
       where: {
-        timestamp: {
+        createdAt: {
           gte: startDate,
           lte: endDate,
         },
       },
     });
 
-    // Aggregate by action
-    const byAction = logs.reduce((acc, log) => {
-      acc[log.action] = (acc[log.action] || 0) + 1;
+    // Using a more robust reducer to avoid "Element implicitly has an 'any' type"
+    const byAction = logs.reduce((acc: Record<string, number>, log) => {
+      const actionName = String(log.action);
+      acc[actionName] = (acc[actionName] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
-
-    // Aggregate by entity type
-    const byEntityType = logs.reduce((acc, log) => {
-      acc[log.entityType] = (acc[log.entityType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Top users
-    const userCounts = logs.reduce((acc, log) => {
-      if (log.userId) {
-        acc[log.userId] = (acc[log.userId] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    const topUsers = Object.entries(userCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-      .map(([userId, count]) => ({ userId, count }));
+    }, {});
 
     return {
       totalLogs: logs.length,
       byAction,
-      byEntityType,
-      topUsers,
     };
-  }
-}
-
-// backend/src/audit/audit.module.ts
-import { Module, Global } from '@nestjs/common';
-import { AuditService } from './audit.service';
-import { AuditController } from './audit.controller';
-
-@Global()
-@Module({
-  providers: [AuditService],
-  controllers: [AuditController],
-  exports: [AuditService],
-})
-export class AuditModule {}
-
-// backend/src/audit/audit.controller.ts
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { AuditService } from './audit.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
-
-@ApiTags('Audit')
-@Controller('audit')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
-@ApiBearerAuth()
-export class AuditController {
-  constructor(private auditService: AuditService) {}
-
-  @Get('logs')
-  @RequirePermissions('audit.read')
-  @ApiOperation({ summary: 'Get audit logs' })
-  async getLogs(
-    @Query('userId') userId?: string,
-    @Query('entityType') entityType?: string,
-    @Query('entityId') entityId?: string,
-    @Query('action') action?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.auditService.getLogs({
-      userId,
-      entityType,
-      entityId,
-      action,
-      page,
-      limit,
-    });
-  }
-
-  @Get('entity-history')
-  @RequirePermissions('audit.read')
-  @ApiOperation({ summary: 'Get audit trail for specific entity' })
-  async getEntityHistory(
-    @Query('entityType') entityType: string,
-    @Query('entityId') entityId: string,
-  ) {
-    return this.auditService.getEntityHistory(entityType, entityId);
-  }
-
-  @Get('statistics')
-  @RequirePermissions('audit.read')
-  @ApiOperation({ summary: 'Get audit statistics' })
-  async getStatistics(
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
-  ) {
-    return this.auditService.getStatistics(
-      new Date(startDate),
-      new Date(endDate),
-    );
   }
 }

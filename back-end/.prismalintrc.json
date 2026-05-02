@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "model-name-pascal-case": "error",
+    "field-name-camel-case": "error",
+    "enum-name-pascal-case": "error"
+  }
+}

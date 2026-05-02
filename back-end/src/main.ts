@@ -1,9 +1,8 @@
-// backend/src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import * as helmet from 'helmet';
+import helmet from 'helmet';
 import * as compression from 'compression';
 
 async function bootstrap() {
@@ -11,7 +10,7 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
 
-  // Security middleware
+  // Security & Optimization middleware
   app.use(helmet());
   app.use(compression());
 
@@ -57,7 +56,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
-  console.log(`🚀 EPC API is running on: http://localhost:${port}`);
+  console.log(`🚀 EPC API is running on: http://localhost:${port}/api/v1`);
   console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
 }
 

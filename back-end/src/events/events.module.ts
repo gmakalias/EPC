@@ -1,0 +1,11 @@
+import { Module, Global } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { EventsService } from './events.service';
+
+@Global()
+@Module({
+  imports: [ConfigModule], // Required for ConfigService in the constructor
+  providers: [EventsService],
+  exports: [EventsService],
+})
+export class EventsModule {}

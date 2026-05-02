@@ -12,7 +12,6 @@ async function main() {
   // =============================================
   console.log('Creating roles and permissions...');
 
-  // Create Permissions
   const permissions = [
     // Product permissions
     { name: 'product.create', resource: 'product', action: 'create', description: 'Create product specifications' },
@@ -123,17 +122,9 @@ async function main() {
   // Admin gets all permissions
   for (const perm of allPermissions) {
     await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: adminRole.id,
-          permissionId: perm.id,
-        },
-      },
+      where: { roleId_permissionId: { roleId: adminRole.id, permissionId: perm.id } },
       update: {},
-      create: {
-        roleId: adminRole.id,
-        permissionId: perm.id,
-      },
+      create: { roleId: adminRole.id, permissionId: perm.id },
     });
   }
 
@@ -143,37 +134,21 @@ async function main() {
   );
   for (const perm of productManagerPerms) {
     await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: productManagerRole.id,
-          permissionId: perm.id,
-        },
-      },
+      where: { roleId_permissionId: { roleId: productManagerRole.id, permissionId: perm.id } },
       update: {},
-      create: {
-        roleId: productManagerRole.id,
-        permissionId: perm.id,
-      },
+      create: { roleId: productManagerRole.id, permissionId: perm.id },
     });
   }
 
   // Pricing Analyst permissions
   const pricingPerms = allPermissions.filter(p =>
-    ['pricing.', 'product.read', 'offering.read'].some(prefix => p.name.startsWith(prefix) || p.name === prefix)
+    ['pricing.', 'product.read', 'offering.read'].some(prefix => p.name.startsWith(prefix))
   );
   for (const perm of pricingPerms) {
     await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: pricingAnalystRole.id,
-          permissionId: perm.id,
-        },
-      },
+      where: { roleId_permissionId: { roleId: pricingAnalystRole.id, permissionId: perm.id } },
       update: {},
-      create: {
-        roleId: pricingAnalystRole.id,
-        permissionId: perm.id,
-      },
+      create: { roleId: pricingAnalystRole.id, permissionId: perm.id },
     });
   }
 
@@ -183,17 +158,9 @@ async function main() {
   );
   for (const perm of operationsPerms) {
     await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: operationsRole.id,
-          permissionId: perm.id,
-        },
-      },
+      where: { roleId_permissionId: { roleId: operationsRole.id, permissionId: perm.id } },
       update: {},
-      create: {
-        roleId: operationsRole.id,
-        permissionId: perm.id,
-      },
+      create: { roleId: operationsRole.id, permissionId: perm.id },
     });
   }
 
@@ -201,17 +168,9 @@ async function main() {
   const viewerPerms = allPermissions.filter(p => p.action === 'read');
   for (const perm of viewerPerms) {
     await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: viewerRole.id,
-          permissionId: perm.id,
-        },
-      },
+      where: { roleId_permissionId: { roleId: viewerRole.id, permissionId: perm.id } },
       update: {},
-      create: {
-        roleId: viewerRole.id,
-        permissionId: perm.id,
-      },
+      create: { roleId: viewerRole.id, permissionId: perm.id },
     });
   }
 
@@ -236,17 +195,9 @@ async function main() {
   });
 
   await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
-        userId: adminUser.id,
-        roleId: adminRole.id,
-      },
-    },
+    where: { userId_roleId: { userId: adminUser.id, roleId: adminRole.id } },
     update: {},
-    create: {
-      userId: adminUser.id,
-      roleId: adminRole.id,
-    },
+    create: { userId: adminUser.id, roleId: adminRole.id },
   });
 
   const pmUser = await prisma.user.upsert({
@@ -263,17 +214,9 @@ async function main() {
   });
 
   await prisma.userRole.upsert({
-    where: {
-      userId_roleId: {
-        userId: pmUser.id,
-        roleId: productManagerRole.id,
-      },
-    },
+    where: { userId_roleId: { userId: pmUser.id, roleId: productManagerRole.id } },
     update: {},
-    create: {
-      userId: pmUser.id,
-      roleId: productManagerRole.id,
-    },
+    create: { userId: pmUser.id, roleId: productManagerRole.id },
   });
 
   // =============================================
@@ -407,50 +350,17 @@ async function main() {
       createdById: adminUser.id,
       characteristics: {
         create: [
-          {
-            name: 'Voice Minutes',
-            description: 'Monthly voice call allowance',
-            valueType: 'number',
-            unitOfMeasure: 'minutes',
-            isRequired: true,
-            defaultValue: '1000',
-          },
-          {
-            name: 'SMS Count',
-            description: 'Monthly SMS allowance',
-            valueType: 'number',
-            unitOfMeasure: 'messages',
-            isRequired: true,
-            defaultValue: '1000',
-          },
-          {
-            name: 'Data Volume',
-            description: 'Monthly data allowance',
-            valueType: 'number',
-            unitOfMeasure: 'GB',
-            isRequired: true,
-            defaultValue: '50',
-          },
-          {
-            name: 'Network Type',
-            description: 'Mobile network technology',
-            valueType: 'enum',
-            isRequired: true,
-            allowedValues: ['4G', '5G'],
-            defaultValue: '5G',
-          },
+          { name: 'Voice Minutes', description: 'Monthly voice call allowance', valueType: 'number', unitOfMeasure: 'minutes', isRequired: true, defaultValue: '1000' },
+          { name: 'SMS Count', description: 'Monthly SMS allowance', valueType: 'number', unitOfMeasure: 'messages', isRequired: true, defaultValue: '1000' },
+          { name: 'Data Volume', description: 'Monthly data allowance', valueType: 'number', unitOfMeasure: 'GB', isRequired: true, defaultValue: '50' },
+          { name: 'Network Type', description: 'Mobile network technology', valueType: 'enum', isRequired: true, allowedValues: ['4G', '5G'], defaultValue: '5G' },
         ],
       },
     },
   });
 
-  const onlineChannel = await prisma.distributionChannel.findUnique({
-    where: { name: 'Online Store' },
-  });
-
-  const retailChannel = await prisma.distributionChannel.findUnique({
-    where: { name: 'Retail Stores' },
-  });
+  const onlineChannel = await prisma.distributionChannel.findUnique({ where: { name: 'Online Store' } });
+  const retailChannel = await prisma.distributionChannel.findUnique({ where: { name: 'Retail Stores' } });
 
   const mobileOffering = await prisma.productOffering.create({
     data: {
@@ -463,45 +373,55 @@ async function main() {
       sellingMode: 'online',
       validForStart: new Date('2026-01-01'),
       createdById: adminUser.id,
-      metadata: {
-        operator: 'COSMOTE',
-        tmCode: '550',
-        networkProfile: 'Hybrid',
-      },
+      metadata: { operator: 'COSMOTE', tmCode: '550', networkProfile: 'Hybrid' },
       channelMappings: {
         create: [
-          {
-            channelId: onlineChannel!.id,
-            isEnabled: true,
-            displayOrder: 1,
-          },
-          {
-            channelId: retailChannel!.id,
-            isEnabled: true,
-            displayOrder: 2,
-          },
+          { channelId: onlineChannel!.id, isEnabled: true, displayOrder: 1 },
+          { channelId: retailChannel!.id, isEnabled: true, displayOrder: 2 },
         ],
       },
     },
   });
 
-  // Create pricing plan
+ // =============================================
+  // 6. PRICING PLAN (FIXED)
+  // =============================================
+  console.log('Creating pricing plans...');
+
+  // STEP A: Ensure we have an offering to attach to.
+  // If you created one earlier called 'offering', this works.
+  // If not, we fetch the first one available:
+  const targetOffering = await prisma.productOffering.findFirst();
+
+  if (!targetOffering) {
+    throw new Error('Could not find any ProductOffering to attach the Pricing Plan to. Make sure Step 5 creates one!');
+  }
+
   await prisma.pricingPlan.create({
     data: {
-      offeringId: mobileOffering.id,
-      name: 'Monthly Subscription',
-      description: 'Standard monthly fee',
-      pricingType: 'recurring',
-      currency: 'EUR',
+      // Connect using the ID from the offering we just found or defined
+      offering: { 
+        connect: { id: targetOffering.id } 
+      },
+      name: "Standard Plan",
+      description: "Standard pricing plan",
+      
+      // These must match your Prisma Schema Enums/Types exactly
+      type: "RECURRING", 
+      period: "MONTHLY",
+      pricingType: "RECURRING", 
+      
+      currency: "EUR",
       isActive: true,
       priceComponents: {
         create: [
           {
-            componentType: 'recurring',
-            name: 'Monthly Fee',
-            amount: 35.00,
-            currency: 'EUR',
-            recurrencePeriod: 'monthly',
+            componentType: "BASE_FEE",
+            name: "Monthly Fee",
+            amount: 29.99,
+            currency: "EUR",
+            // If your schema requires 'recurrencePeriod' here too, add it:
+            // recurrencePeriod: "MONTHLY" 
           },
         ],
       },
@@ -509,7 +429,7 @@ async function main() {
   });
 
   // =============================================
-  // 6. CFS/RFS/RESOURCES
+  // 7. CFS/RFS/RESOURCES
   // =============================================
   console.log('Creating services and resources...');
 
@@ -518,10 +438,7 @@ async function main() {
       name: 'Voice Service',
       description: 'Voice call service',
       serviceType: 'voice',
-      parameters: {
-        codec: 'AMR-WB',
-        quality: 'HD',
-      },
+      parameters: { codec: 'AMR-WB', quality: 'HD' },
     },
   });
 
@@ -530,10 +447,7 @@ async function main() {
       name: 'SMS Service',
       description: 'Text messaging service',
       serviceType: 'sms',
-      parameters: {
-        encoding: 'GSM-7',
-        maxLength: 160,
-      },
+      parameters: { encoding: 'GSM-7', maxLength: 160 },
     },
   });
 
@@ -542,10 +456,7 @@ async function main() {
       name: 'Data Service',
       description: 'Mobile data service',
       serviceType: 'data',
-      parameters: {
-        bearer: '5G',
-        speed: '1Gbps',
-      },
+      parameters: { bearer: '5G', speed: '1Gbps' },
     },
   });
 
@@ -555,10 +466,7 @@ async function main() {
       description: 'Voice provisioning service',
       cfsServiceId: voiceCfs.id,
       serviceType: 'voice_provisioning',
-      parameters: {
-        protocol: 'SIP',
-        qos: 'Class 1',
-      },
+      parameters: { protocol: 'SIP', qos: 'Class 1' },
     },
   });
 
@@ -568,10 +476,7 @@ async function main() {
       description: 'SMS routing service',
       cfsServiceId: smsCfs.id,
       serviceType: 'sms_routing',
-      parameters: {
-        smsc: 'SMSC-01',
-        protocol: 'SMPP 3.4',
-      },
+      parameters: { smsc: 'SMSC-01', protocol: 'SMPP 3.4' },
     },
   });
 
@@ -581,10 +486,7 @@ async function main() {
       description: 'Data bearer service',
       cfsServiceId: dataCfs.id,
       serviceType: 'data_bearer',
-      parameters: {
-        apn: 'internet',
-        qci: 'QCI-9',
-      },
+      parameters: { apn: 'internet', qci: 'QCI-9' },
     },
   });
 
@@ -593,10 +495,7 @@ async function main() {
       name: 'MSISDN Pool',
       resourceType: 'msisdn',
       status: 'available',
-      parameters: {
-        range: '+30694XXXXXXX',
-        poolSize: '100000',
-      },
+      parameters: { range: '+30694XXXXXXX', poolSize: '100000' },
     },
   });
 
@@ -605,10 +504,7 @@ async function main() {
       name: 'SIM Inventory',
       resourceType: 'sim',
       status: 'available',
-      parameters: {
-        type: 'USIM',
-        format: 'Nano',
-      },
+      parameters: { type: 'USIM', format: 'Nano' },
     },
   });
 

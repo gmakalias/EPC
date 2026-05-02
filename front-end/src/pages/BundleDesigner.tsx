@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
-import Button from '../components/Button';
+import Button from '../components/Form/Button';
 
 const BundleDesigner: React.FC = () => {
   return (

@@ -1,18 +1,7 @@
-// backend/src/subscription/subscription.controller.ts
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { SubscriptionService } from './subscription.service';
-import { CreateSubscriptionDto } from './dto/create-subscription.dto';
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { SubscriptionService } from './subscription.service'; // Ensure this import is here
+import { CreateSubscriptionDto, UpdateSubscriptionDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
@@ -42,21 +31,14 @@ export class SubscriptionController {
   @Post()
   @RequirePermissions('subscription.create')
   @ApiOperation({ summary: 'Create subscription (TMF638)' })
-  async create(
-    @Body() createDto: CreateSubscriptionDto,
-    @CurrentUser() user: any,
-  ) {
+  async create(@Body() createDto: CreateSubscriptionDto, @CurrentUser() user: any) {
     return this.subscriptionService.create(createDto, user.id);
   }
 
   @Patch(':id')
   @RequirePermissions('subscription.update')
   @ApiOperation({ summary: 'Update subscription (TMF638)' })
-  async update(
-    @Param('id') id: string,
-    @Body() updateDto: UpdateSubscriptionDto,
-    @CurrentUser() user: any,
-  ) {
+  async update(@Param('id') id: string, @Body() updateDto: UpdateSubscriptionDto, @CurrentUser() user: any) {
     return this.subscriptionService.update(id, updateDto, user.id);
   }
 

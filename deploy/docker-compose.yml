@@ -14,7 +14,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init:/docker-entrypoint-initdb.d
+      # Ensure this folder exists or remove this line if not using init scripts
+      - ./database/init:/docker-entrypoint-initdb.d 
     networks:
       - epc-network
     healthcheck:
@@ -76,11 +77,11 @@ services:
       timeout: 10s
       retries: 5
 
-  # Backend API (Node.js/NestJS)
+  # Backend API (Node.js/NestJS) - FIXED INDENTATION
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ../back-end
+      dockerfile: dockerfile
     container_name: epc-api
     environment:
       NODE_ENV: development
@@ -93,7 +94,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./backend:/app
+      - ../back-end:/app
       - /app/node_modules
     networks:
       - epc-network
@@ -106,25 +107,23 @@ services:
         condition: service_healthy
     command: npm run start:dev
 
-  # Frontend React App
+  # Frontend React App - FIXED INDENTATION
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: ../front-end
+      dockerfile: dockerfile
     container_name: epc-frontend
-    environment:
-      VITE_API_URL: http://localhost:3000/api/v1
     ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - "5173:80"  # Map your browser port (5173) to Nginx port (80)
+    environment:
+      - VITE_API_URL=http://localhost:3000/api/v1
     networks:
       - epc-network
     depends_on:
       - api
-    command: npm run dev -- --host
-
+    volumes:
+      - ../front-end:/app
+      - /app/node_modules
   # Adminer for database management
   adminer:
     image: adminer:latest
@@ -135,7 +134,7 @@ services:
       - epc-network
     depends_on:
       - postgres
-
+  
   # Prometheus for metrics
   prometheus:
     image: prom/prometheus:latest
@@ -143,7 +142,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      # Adjusted to match your directory structure (root/deploy/prometheus.yml)
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     networks:
       - epc-network
@@ -162,8 +162,6 @@ services:
       GF_SECURITY_ADMIN_USER: admin
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
     networks:
       - epc-network
     depends_on:

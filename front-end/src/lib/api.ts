@@ -1,8 +1,12 @@
 // frontend/src/lib/api.ts
 import axios from 'axios';
 
+/**
+ * Create Axios instance with Vite environment variables
+ * VITE_API_URL is pulled from your docker-compose environment settings
+ */
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1',
+  baseURL: (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000/api/v1',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -12,15 +16,12 @@ export const api = axios.create({
 // Request interceptor for logging and debugging
 api.interceptors.request.use(
   (config) => {
-    // Log requests in development
     if (import.meta.env.DEV) {
       console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, config.data);
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor for error handling
@@ -137,9 +138,8 @@ export const importExportService = {
   importProducts: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post('/import/products', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Don't set Content-Type header manually; Axios does it better with FormData
+    return api.post('/import/products', formData);
   },
   getExportStatus: (jobId: string) => api.get(`/export/status/${jobId}`),
 };

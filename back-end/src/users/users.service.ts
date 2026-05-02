@@ -124,7 +124,7 @@ export class UsersService {
           include: {
             role: {
               include: {
-                rolePermissions: {
+                permissions: {
                   include: {
                     permission: true,
                   },
@@ -143,7 +143,7 @@ export class UsersService {
     // Extract roles and permissions
     const roles = user.userRoles.map((ur) => ur.role);
     const permissions = user.userRoles.flatMap((ur) =>
-      ur.role.rolePermissions.map((rp) => rp.permission),
+      ur.role.permissions.map((rp) => rp.permission),
     );
 
     return {
@@ -347,16 +347,16 @@ export class UsersService {
   async removeRole(userId: string, roleId: string) {
     // Check if user-role assignment exists
     const userRole = await this.prisma.userRole.findUnique({
-      where: {
-        userId_roleId: {
-          userId,
-          roleId,
-        },
-      },
-      include: {
-        role: true,
-      },
-    });
+	where: {
+		userId_roleId: {
+			userId: userId,
+			roleId: roleId,
+			},
+		},
+		include: {
+		role: true, // This makes "userRole.role.name" accessible
+		},
+	});
 
     if (!userRole) {
       throw new NotFoundException('User does not have this role');

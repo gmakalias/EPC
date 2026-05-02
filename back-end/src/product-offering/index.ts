@@ -1,7 +1,8 @@
 // backend/src/product-offering/dto/index.ts
 export * from '.';
-export * from './update-product-offering.dto';
-export * from './product-offering-query.dto';
+export * from './dto/create-product-offering.dto';
+export * from './dto/update-product-offering.dto';
+export * from './dto/product-offering-query.dto';
 
 // backend/src/product-offering/dto/create-product-offering.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
