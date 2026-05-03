@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AppController } from './app.controller'; // <--- 1. Import the new controller
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -53,5 +54,6 @@ import { HealthModule } from './health/health.module';
     ServiceModule,
     ResourceModule,
   ],
+  controllers: [AppController], // <--- 2. Register the AppController here
 })
 export class AppModule {}
