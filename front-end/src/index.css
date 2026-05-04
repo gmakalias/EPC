@@ -14,7 +14,7 @@
 
 body {
   margin: 0;
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: 'Open Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   background-color: var(--bg-secondary);
   color: var(--text-main);
